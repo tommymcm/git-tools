@@ -1,0 +1,53 @@
+#!/bin/bash -e
+
+function usage {
+    echo "$(basename $0) PUBLIC_REPO PRIVATE_REPO [--dir REPO_DIR]"
+}
+
+PUBLIC_REPO="$1"
+shift
+PRIVATE_REPO="$1"
+shift
+
+PRIVATE_REPO_DIR="$(basename ${PRIVATE_REPO%.git})"
+echo "${PRIVATE_REPO_DIR}"
+
+while [[ $# -gt 0 ]] ;
+do
+    case $1 in
+        --dir)
+            PRIVATE_REPO_DIR="$1"
+            shift
+            ;;
+        --set-upstream)
+            SET_UPSTREAM="y"
+            shift
+            ;;
+        *)
+            echo "Unknown option $1" ;
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+PUBLIC_REPO_DIR="$(basename ${PUBLIC_REPO})"
+
+git clone --bare ${PUBLIC_REPO} ${PUBLIC_REPO_DIR}
+
+pushd ${PUBLIC_REPO_DIR}
+
+git push --mirror ${PRIVATE_REPO}
+
+popd
+
+rm -rf ${PUBLIC_REPO_DIR}
+
+git clone ${PRIVATE_REPO} ${PRIVATE_REPO_DIR}
+
+if [ ! -z ${SET_UPSTREAM+x} ] ; then
+    pushd ${PRIVATE_REPO_DIR}
+    git remote add upstream ${PUBLIC_REPO}
+    git remote set-url --push upstream DISABLE
+    popd
+fi
